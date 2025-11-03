@@ -163,18 +163,6 @@ def visualization(y_pred,anchor,img_size,num_of_class,conf = 0.5,is_label = Fals
   return bbox_list
  
 import torchvision.transforms.functional as FF
-'''
-def show(imgs):
-    if not isinstance(imgs, list):
-        imgs = [imgs]
-    fix, axs = plt.subplots(ncols=len(imgs), squeeze=False)
-    for i, img in enumerate(imgs):
-        img = img.detach()
-        img = FF.to_pil_image(img)
-        axs[0, i].imshow(np.asarray(img))
-        axs[0, i].set(xticklabels=[], yticklabels=[], xticks=[], yticks=[])
-    plt.savefig(f"bbox_on_image.png")
-'''
 
 def pil2cv(image):
     ''' PIL型 -> OpenCV型 '''
