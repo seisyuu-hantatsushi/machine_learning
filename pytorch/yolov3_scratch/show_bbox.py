@@ -9,7 +9,7 @@ import torchvision, torchinfo
 
 from yolov3_dataset import YoloV3_DatasetFromCOCO
 
-def visualization(y_pred,anchor,img_size,num_of_class,conf = 0.5,is_label = False):
+def visualization(y_pred,anchor,img_size,num_of_class = 80,conf = 0.5,is_label = False):
   size = y_pred.shape[2]
   anchor_size = anchor[anchor["scale"] == size]
   bbox_list = []
