@@ -35,15 +35,15 @@ def visualization(y_pred,anchor,img_size,num_of_class,conf = 0.5,is_label = Fals
 import torchvision.transforms.functional as FF
 
 def pil2cv(image):
-    ''' PIL型 -> OpenCV型 '''
-    new_image = np.array(image, dtype=np.uint8)
-    if new_image.ndim == 2:  # モノクロ
-        pass
-    elif new_image.shape[2] == 3:  # カラー
-        new_image = new_image[:, :, ::-1]
-    elif new_image.shape[2] == 4:  # 透過
-        new_image = new_image[:, :, [2, 1, 0, 3]]
-    return new_image
+  ''' PIL型 -> OpenCV型 '''
+  new_image = np.array(image, dtype=np.uint8)
+  if new_image.ndim == 2:  # モノクロ
+    pass
+  elif new_image.shape[2] == 3:  # カラー
+    new_image = new_image[:, :, ::-1]
+  elif new_image.shape[2] == 4:  # 透過
+    new_image = new_image[:, :, [2, 1, 0, 3]]
+  return new_image
 
 def show(imgs,orig_size):
     print(orig_size)
@@ -58,31 +58,35 @@ def show(imgs,orig_size):
         cv2.waitKey(0)
 
 def main():
-    
-    args = sys.argv
-    annotation_file = args[1]
-    img_size = (416,416)
-    train_dataset = YoloV3_DatasetFromCOCO(annotation_file, img_size)
-    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size = 1)
+  bShortSet = False
+  args = sys.argv
+  annotation_file = args[1]
 
-    #np.set_printoptions(threshold=sys.maxsize)
-    #torch.set_printoptions(profile="full")
+  if len(args) > 2:
+    bShortSet = True
+  
+  img_size = (416,416)
+  train_dataset = YoloV3_DatasetFromCOCO(annotation_file, img_size)
+  train_loader = torch.utils.data.DataLoader(train_dataset, batch_size = 1)
 
-    for n, (img_path, scale3_label, scale2_label, scale1_label) in enumerate(train_loader):
-        img_path = img_path[0]
-        img = cv2.imread(img_path)[:,:,::-1]
-        orig_size = (img.shape[1],img.shape[0])
-        #cv2.imshow(img_path, img)
-        #cv2.waitKey(0)
-        img = cv2.resize(img, img_size)
-        img = torch.tensor(img.transpose(2,0,1))
-        preds = [scale3_label, scale2_label, scale1_label]
-        for color,pred in zip(["red","green","blue"],preds):
-            bboxes = visualization(pred,train_dataset.anchor_dict,
-                                   img_size,train_dataset.num_of_class,
-                                   conf = 0.9,is_label = True)
-            img = torchvision.utils.draw_bounding_boxes(img, torch.tensor(bboxes), colors=color, width=1)
-        show(img,orig_size)
+  #np.set_printoptions(threshold=sys.maxsize)
+  #torch.set_printoptions(profile="full")
+
+  for n, (img_path, scale3_label, scale2_label, scale1_label) in enumerate(train_loader):
+    img_path = img_path[0]
+    img = cv2.imread(img_path)[:,:,::-1]
+    orig_size = (img.shape[1],img.shape[0])
+    #cv2.imshow(img_path, img)
+    #cv2.waitKey(0)
+    img = cv2.resize(img, img_size)
+    img = torch.tensor(img.transpose(2,0,1))
+    preds = [scale3_label, scale2_label, scale1_label]
+    for color,pred in zip(["red","green","blue"],preds):
+      bboxes = visualization(pred,train_dataset.anchor_dict,
+                             img_size,train_dataset.num_of_class,
+                             conf = 0.9,is_label = True)
+      img = torchvision.utils.draw_bounding_boxes(img, torch.tensor(bboxes), colors=color, width=1)
+    show(img,orig_size)
 
 if __name__ == '__main__':
     main()
