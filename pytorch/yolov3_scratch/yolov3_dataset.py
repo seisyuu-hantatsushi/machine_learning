@@ -4,7 +4,7 @@ from pycocotools.coco import COCO
 
 import anchorbox
 
-class YOLOv3_DatasetFromCOCO(torch.utils.data.Dataset):
+class YoloV3_DatasetFromCOCO(torch.utils.data.Dataset):
 
     def __init__(self, annotation_file, img_size):
         super().__init__()

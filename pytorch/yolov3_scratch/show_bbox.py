@@ -7,7 +7,7 @@ import numpy as np
 import torch, torch.nn as nn, torchvision.transforms as T
 import torchvision, torchinfo
 
-from yolov3_dataset import YOLOv3_DatasetFromCOCO
+from yolov3_dataset import YoloV3_DatasetFromCOCO
 
 def visualization(y_pred,anchor,img_size,num_of_class,conf = 0.5,is_label = False):
   size = y_pred.shape[2]
@@ -62,7 +62,7 @@ def main():
     args = sys.argv
     annotation_file = args[1]
     img_size = (416,416)
-    train_dataset = YOLOv3_DatasetFromCOCO(annotation_file, img_size)
+    train_dataset = YoloV3_DatasetFromCOCO(annotation_file, img_size)
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size = 1)
 
     #np.set_printoptions(threshold=sys.maxsize)
