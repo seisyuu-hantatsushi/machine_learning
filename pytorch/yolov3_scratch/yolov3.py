@@ -174,7 +174,7 @@ class YoloV3(nn.Module):
         scale2_object_pred, upsample_for_scale1 = self.scale2_detect(scales[1], upsample_for_scale2)
         scale1_object_pred, _                   = self.scale1_detect(scales[0], upsample_for_scale1)
 
-        return [scale1_object_pred, scale2_object_pred, scale3_object_pred]
+        return [scale3_object_pred, scale2_object_pred, scale1_object_pred]
     
 def main():
 
@@ -192,8 +192,6 @@ def main():
     #torchinfo.summary(model, input_size=(1, 3, input_size[1], input_size[0]))
     
     #onnx_model = torch.onnx.export(model, img_tensor, "yolov3.onnx", dynamo=True, verbose=True)
-
-
 
     for i in range(9):
         anchor = anchor_dict.iloc[i]
