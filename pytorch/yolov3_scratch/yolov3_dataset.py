@@ -4,14 +4,34 @@ from pycocotools.coco import COCO
 
 import anchorbox
 
+first_128_listed_id = [  9,   25,   30,  34,  36,  42,  49,  61,
+                         64,  71,   72,  73,  74,  77,  78,  81,
+                         86,  89,   92,  94, 109, 110, 113, 127,
+                         133, 136, 138, 142, 143, 144, 149, 151,
+                         154, 164, 165, 192, 194, 196, 201, 208,
+                         241, 247, 257, 260, 263, 283, 294, 307,
+                         308, 309, 312, 315, 321, 322, 326, 328,
+                         332, 338, 349, 357, 359, 360, 368, 370,
+                         382, 384, 387, 389, 394, 395, 397, 400,
+                         404, 415, 419, 428, 431, 436, 438, 443,
+                         446, 450, 459, 471, 472, 474, 486, 488,
+                         490, 491, 502, 510, 514, 520, 529, 531,
+                         532, 536, 540, 542, 544, 560, 562, 564,      
+                         569, 572, 575, 581, 584, 589, 590, 595,
+                         597, 599, 605, 612, 620, 623, 625, 626,
+                         629, 634, 636, 641, 643, 650, 656, 659  ]
+
 class YoloV3_DatasetFromCOCO(torch.utils.data.Dataset):
 
-    def __init__(self, annotation_file, img_size):
+    def __init__(self, annotation_file, img_size, bShortSet = False):
         super().__init__()
         self.annotation_file = annotation_file
         self.coco_ctx = COCO(annotation_file)
         self.anchor_dict = anchorbox.obtain_anchorbox(annotation_file)
-        self.ids = self.coco_ctx.getImgIds()
+        if bShortSet:
+            self.ids = first_128_listed_id
+        else:
+            self.ids = self.coco_ctx.getImgIds()
         self.img_size = img_size;
         self.num_of_class = len(anchorbox.map_category)
         self.map_size = [(int(self.img_size[1]/32), int(self.img_size[0]/32)),
@@ -118,7 +138,6 @@ class YoloV3_DatasetFromCOCO(torch.utils.data.Dataset):
         return scale3_label, scale2_label, scale1_label
 
     def __getitem__(self, idx):
-        print(idx)
         img_id = self.ids[idx]
         #img_id = 9
         img_info   = self.coco_ctx.loadImgs(img_id)        
