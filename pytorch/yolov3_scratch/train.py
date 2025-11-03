@@ -126,8 +126,8 @@ class YOLOv3_Dataset(torch.utils.data.Dataset):
 
     def __getitem__(self, idx):
         print(idx)
-        #img_id = self.ids[idx]
-        img_id = 9
+        img_id = self.ids[idx]
+        #img_id = 9
         img_info   = self.coco_ctx.loadImgs(img_id)        
         bbox_list = self.get_annotation_box(img_id)
         scale3_label, scale2_label, scale1_label = self.annotation_bbox_to_tensor(bbox_list)        
@@ -163,6 +163,7 @@ def visualization(y_pred,anchor,img_size,num_of_class,conf = 0.5,is_label = Fals
   return bbox_list
  
 import torchvision.transforms.functional as FF
+'''
 def show(imgs):
     if not isinstance(imgs, list):
         imgs = [imgs]
@@ -173,7 +174,31 @@ def show(imgs):
         axs[0, i].imshow(np.asarray(img))
         axs[0, i].set(xticklabels=[], yticklabels=[], xticks=[], yticks=[])
     plt.savefig(f"bbox_on_image.png")
- 
+'''
+
+def pil2cv(image):
+    ''' PIL型 -> OpenCV型 '''
+    new_image = np.array(image, dtype=np.uint8)
+    if new_image.ndim == 2:  # モノクロ
+        pass
+    elif new_image.shape[2] == 3:  # カラー
+        new_image = new_image[:, :, ::-1]
+    elif new_image.shape[2] == 4:  # 透過
+        new_image = new_image[:, :, [2, 1, 0, 3]]
+    return new_image
+
+def show(imgs,orig_size):
+    print(orig_size)
+    if not isinstance(imgs, list): #listでなければlistにする.
+        imgs = [imgs] 
+    for i, img in enumerate(imgs):
+        img = img.detach()
+        img = FF.to_pil_image(img)
+        img = pil2cv(img)
+        img = cv2.resize(img, orig_size)
+        cv2.imshow("",img)
+        cv2.waitKey(0)
+
 def main():
     
     args = sys.argv
@@ -188,6 +213,7 @@ def main():
     for n, (img_path, scale3_label, scale2_label, scale1_label) in enumerate(train_loader):
         img_path = img_path[0]
         img = cv2.imread(img_path)[:,:,::-1]
+        orig_size = (img.shape[1],img.shape[0])
         #cv2.imshow(img_path, img)
         #cv2.waitKey(0)
         img = cv2.resize(img, img_size)
@@ -198,8 +224,7 @@ def main():
                                    img_size,train_dataset.num_of_class,
                                    conf = 0.9,is_label = True)
             img = torchvision.utils.draw_bounding_boxes(img, torch.tensor(bboxes), colors=color, width=1)
-        show(img)
-        break
+        show(img,orig_size)
 
 if __name__ == '__main__':
     main()
