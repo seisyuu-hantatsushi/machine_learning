@@ -198,6 +198,6 @@ def main():
     for i in range(9):
         anchor = anchor_dict.iloc[i]
         print(anchor)
-    
+        
 if __name__ == '__main__':
     main()
