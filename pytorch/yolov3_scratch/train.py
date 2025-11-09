@@ -22,12 +22,16 @@ def main():
   args = sys.argv
   annotation_file = args[1]
   img_size = (416,416)
-  train_dataset = YoloV3_DatasetFromCOCO(annotation_file, img_size, bShortSet = True)
+  train_dataset = YoloV3_DatasetFromCOCO(annotation_file, img_size, bShortSet = False)
   train_loader = torch.utils.data.DataLoader(train_dataset, batch_size = 1)
 
   transform = T.Compose([T.ToTensor()])
     
   model = YoloV3().to('cuda')
+  if len(args) > 2:
+    model_weight = args[2]
+    model.load_state_dict(torch.load(model_weight))
+
   #model = YoloV3()
   optimizer = torch.optim.Adam(model.parameters())
 
@@ -38,51 +42,56 @@ def main():
   confidence = 0.5
   best_loss  = 99999
 
-  for epoch in range(300):
-    total_train_loss = 0
-    total_train_loss_coord = 0
-    total_train_loss_obj = 0
-    total_train_loss_noobj = 0
+  try:
+    for epoch in range(300):
+      total_train_loss = 0
+      total_train_loss_coord = 0
+      total_train_loss_obj = 0
+      total_train_loss_noobj = 0
     
-    with tqdm(train_loader) as pbar:
-      pbar.set_description("[train] Epoch %d" % epoch)
-      for n, (img_file, scale3_label , scale2_label ,scale1_label) in enumerate(pbar):
-        optimizer.zero_grad()
-        img = cv2.imread(img_file[0])
-        img = cv2.resize(img , img_size)
-        img = Image.fromarray(img)
-        img = transform(img)
-        img = img.cuda()
-        img = img.unsqueeze(0)
-        scale1_label = scale1_label.cuda()
-        scale2_label = scale2_label.cuda()
-        scale3_label = scale3_label.cuda()
-        labels = [scale3_label , scale2_label ,scale1_label]
-        preds  = list(model(img))
-        loss_coord = 0
-        loss_obj = 0
-        loss_noobj = 0
-        for label , pred in zip(labels , preds):
-          _loss_coord , _loss_obj , _loss_noobj = bbox_metric(pred , label)
-          loss_coord += _loss_coord
-          loss_obj += _loss_obj
-          loss_noobj += _loss_noobj
-                
-        loss = lambda_coord*loss_coord + lambda_obj*loss_obj + lambda_noobj*loss_noobj
-        total_train_loss += loss.item()
-        total_train_loss_coord += loss_coord.item()
-        total_train_loss_obj += loss_obj.item()
-        total_train_loss_noobj += loss_noobj.item()
-        loss.backward()
-        optimizer.step()
-        pbar.set_description("[train] Epoch %d loss %f loss_coord %f loss_obj %f loss_noobj %f" %
-                             (epoch ,total_train_loss/(n+1),total_train_loss_coord/(n+1) ,
-                              total_train_loss_obj/(n+1),total_train_loss_noobj/(n+1)))
+      with tqdm(train_loader) as pbar:
+        pbar.set_description("[train] Epoch %d" % epoch)
+        for n, (img_file, scale3_label , scale2_label ,scale1_label) in enumerate(pbar):
+          optimizer.zero_grad()
+          img = cv2.imread(img_file[0])
+          img = cv2.resize(img , img_size)
+          img = Image.fromarray(img)
+          img = transform(img)
+          img = img.cuda()
+          img = img.unsqueeze(0)
+          scale1_label = scale1_label.cuda()
+          scale2_label = scale2_label.cuda()
+          scale3_label = scale3_label.cuda()
+          labels = [scale3_label , scale2_label ,scale1_label]
+          preds  = list(model(img))
+          loss_coord = 0
+          loss_obj = 0
+          loss_noobj = 0
+          for label , pred in zip(labels , preds):
+            _loss_coord , _loss_obj , _loss_noobj = bbox_metric(pred , label)
+            loss_coord += _loss_coord
+            loss_obj += _loss_obj
+            loss_noobj += _loss_noobj
+          
+          loss = lambda_coord*loss_coord + lambda_obj*loss_obj + lambda_noobj*loss_noobj
+          total_train_loss += loss.item()
+          total_train_loss_coord += loss_coord.item()
+          total_train_loss_obj += loss_obj.item()
+          total_train_loss_noobj += loss_noobj.item()
+          loss.backward()
+          optimizer.step()
+          pbar.set_description("[train] Epoch %d loss %f loss_coord %f loss_obj %f loss_noobj %f" %
+                               (epoch ,total_train_loss/(n+1),total_train_loss_coord/(n+1) ,
+                                total_train_loss_obj/(n+1),total_train_loss_noobj/(n+1)))
 
-      if best_loss > total_train_loss/(n+1):
-        model_path = 'model.pth'
-        torch.save(model.state_dict(), model_path)
-        best_loss = total_train_loss/(n+1)
+        if best_loss > total_train_loss/(n+1):
+          model_path = 'model.pth'
+          torch.save(model.state_dict(), model_path)
+          best_loss = total_train_loss/(n+1)
+
+  except KeyboardInterrupt:
+    model_path = 'model.pth'
+    torch.save(model.state_dict(), model_path)
 
   return
 
