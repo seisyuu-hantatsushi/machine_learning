@@ -61,6 +61,8 @@ class YoloV3_DatasetFromCOCO(torch.utils.data.Dataset):
             lt_y = anno_info['bbox'][1]/img_h
             w    = anno_info['bbox'][2]/img_w
             h    = anno_info['bbox'][3]/img_h
+            if w == 0 or h == 0:
+                continue
             c_x  = lt_x + w/2
             c_y  = lt_y + h/2
             #yolo_bbox = { 'category_id': map_category[str(anno_info['category_id'])]-1, 'x' : c_x, 'y' : c_y, 'width' : w, 'height': h }
@@ -140,6 +142,7 @@ class YoloV3_DatasetFromCOCO(torch.utils.data.Dataset):
     def __getitem__(self, idx):
         img_id = self.ids[idx]
         #img_id = 9
+        #print("img_id=", img_id)
         img_info   = self.coco_ctx.loadImgs(img_id)        
         bbox_list = self.get_annotation_box(img_id)
         scale3_label, scale2_label, scale1_label = self.annotation_bbox_to_tensor(bbox_list)        
