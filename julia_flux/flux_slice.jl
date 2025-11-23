@@ -90,6 +90,8 @@ function Slice(starts::AbstractArray{<:Integer},
     steps = steps === nothing ? fill(1, n) : collect(steps)
     length(steps) == n || throw(ArgumentError("`steps` must match `starts`"))
 
+    println("slice construction: ", starts, ",", ends, ",", axes, ",", steps)
+    
     return Slice(starts, ends, axes, steps)
 
 end
@@ -111,11 +113,13 @@ function (m::Slice)(x::AbstractArray{T,N}) where {T,N}
         append!(dims,   dim)
     end
 
+    println("init selector: ", axes, ",", starts, ",", ends, ",", steps)
     for (a, s, e, st) in zip(m.axes, m.starts, m.ends, m.steps)
+        println("create selector: ", a, ",", s, ",", e, ",", st)
         if a in axes
             starts[a] = s <= 0 ? s + dims[a] : s
             ends[a]   = e <= 0 ? e + (dims[a]-1) : e
-            steps[a]  = m.steps[a]
+            steps[a]  = st
             if st > 0
                 starts[a] = clamp(starts[a], 1, dims[a])
                 ends[a]   = clamp(ends[a],   1, dims[a])
@@ -192,4 +196,7 @@ if abspath(PROGRAM_FILE) == @__FILE__
     model = Slice(starts, ends; steps=steps)
     y = model(x)
     println("4:", y)
+
+
+
 end
