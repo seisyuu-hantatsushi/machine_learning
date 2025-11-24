@@ -1,5 +1,7 @@
 import Flux, AMDGPU
-import ONNXNaiveNASflux
+
+import ONNXNaiveNASflux,ONNX
+
 
 # In Flux, the dimension order is HWCN.
 # FluxはHWCNの並び
@@ -76,6 +78,48 @@ end
 
 Flux.Functors.@functor Slice
 
+#=
+import ONNXNaiveNASflux: AbstractProbe, recursename, nextname, newfrom, add!, name
+function (m::Slice)(probes::ONNXNaiveNASflux.AbstractProbe...)
+
+    p = probes[1]
+    optype = "Slice"
+    nodename = ONNXNaiveNASflux.recursename(optype, ONNXNaiveNASflux.nextname(p))
+
+    attributes = ONNX.AttributeProto[
+        ONNX.AttributeProto(
+            name = "starts",
+            ints = Int64.(m.starts),
+        ),
+        ONNX.AttributeProto(
+            name = "ends",
+            ints = Int64.(m.ends),
+        ),
+    ]
+
+    if m.axes !== nothing
+        ONNXNaiveNASflux.push!(attributes, ONNX.AttributeProto(name = "axes", ints = Int64.(m.axes)))
+    end
+
+    if m.steps !== nothing
+        ONNXNaiveNASflux.push!(attributes, ONNX.AttributeProto(name = "steps", ints = Int64.(m.steps)))
+    end
+
+    ONNXNaiveNASflux.add!(
+        p,
+        ONNX.NodeProto(
+            input = collect(ONNXNaiveNASflux.name.(probes)),
+            output = [nodename],
+            op_type = optype,
+            attribute = attributes,
+        )
+    )
+
+    return ONNXNaiveNASflux.newfrom(p, nodename, identity)
+
+end
+=#
+
 function Slice(starts::AbstractArray{<:Integer},
                ends::AbstractArray{<:Integer};
                axes::Union{Nothing,AbstractArray{<:Integer}}=nothing,
@@ -113,9 +157,7 @@ function (m::Slice)(x::AbstractArray{T,N}) where {T,N}
         append!(dims,   dim)
     end
 
-    println("init selector: ", axes, ",", starts, ",", ends, ",", steps)
     for (a, s, e, st) in zip(m.axes, m.starts, m.ends, m.steps)
-        println("create selector: ", a, ",", s, ",", e, ",", st)
         if a in axes
             starts[a] = s <= 0 ? s + dims[a] : s
             ends[a]   = e <= 0 ? e + (dims[a]-1) : e
@@ -133,8 +175,8 @@ function (m::Slice)(x::AbstractArray{T,N}) where {T,N}
     function idxs(axes, starts, ends, steps)
         idxs = Vector{Any}(undef, length(axes))
         fill!(idxs, Colon())
-        println(ndims(axes))
-        println(zip(starts, ends, steps));
+        #println(ndims(axes))
+        #println(zip(starts, ends, steps));
         for (a, s, e,st) in zip(axes, starts, ends, steps)
             idxs[a] = s:st:e 
         end
@@ -144,6 +186,84 @@ function (m::Slice)(x::AbstractArray{T,N}) where {T,N}
     idxs = idxs(axes, starts, ends, steps)
 
     return  x[idxs...]
+
+end
+
+function (m::Slice)(probes::ONNXNaiveNASflux.AbstractProbe...)
+
+    p = probes[1]
+    optype = "Slice"
+    nodename = ONNXNaiveNASflux.recursename(optype, ONNXNaiveNASflux.nextname(p))
+
+    starts_node_name = nodename * "_starts"
+    ONNXNaiveNASflux.add!(
+        p,
+        ONNXNaiveNASflux.BaseOnnx.TensorProto(
+            name      = starts_node_name,
+            data_type = Int(ONNXNaiveNASflux.BaseOnnx.TensorProto_DataType.INT64),
+            dims      = Int64[length(m.starts)],
+            int64_data = m.starts .- 1))
+
+
+    ends_node_name = nodename * "_ends"
+    ONNXNaiveNASflux.add!(
+        p,
+        ONNXNaiveNASflux.BaseOnnx.TensorProto(
+            name      = ends_node_name,
+            data_type = Int(ONNXNaiveNASflux.BaseOnnx.TensorProto_DataType.INT64),
+            dims      = Int64[length(m.ends)],
+            int64_data = m.ends .- 1))
+
+    inputs = [ONNXNaiveNASflux.name(p), starts_node_name, ends_node_name]
+
+    if m.axes !== nothing
+        ndims = length(p.shape)
+        axes_node_name = nodename * "_axes"
+        axes = ndims .- m.axes 
+        ONNXNaiveNASflux.add!(
+            p,
+            ONNXNaiveNASflux.BaseOnnx.TensorProto(
+                name      = axes_node_name,
+                data_type = Int(ONNXNaiveNASflux.BaseOnnx.TensorProto_DataType.INT64),
+                dims      = Int64[length(axes)],
+                int64_data = axes))
+        push!(inputs, axes_node_name)
+    end
+
+    if m.steps !== nothing
+        steps_node_name = nodename * "_steps"
+        ONNXNaiveNASflux.add!(
+            p,
+            ONNXNaiveNASflux.BaseOnnx.TensorProto(
+                name      = steps_node_name,
+                data_type = Int(ONNXNaiveNASflux.BaseOnnx.TensorProto_DataType.INT64),
+                dims      = Int64[length(m.steps)],
+                int64_data = m.steps))
+        push!(inputs, steps_node_name)
+    end
+
+    function fshape(s)
+        fs = collect(s)
+        for (a,st) in zip(m.axes, m.steps)
+            fs[a] = Int(s[a]/st)
+        end
+        return Tuple(fs)        
+    end
+    
+    ONNXNaiveNASflux.add!(
+        p,
+        ONNXNaiveNASflux.BaseOnnx.NodeProto(
+            #input = collect(ONNXNaiveNASflux.name.(probes)),
+            name  = nodename,
+            input = inputs,
+            output = [nodename],
+            op_type = optype,
+        )
+    )
+
+    return ONNXNaiveNASflux.newfrom(p,
+                                    nodename,
+                                    fshape)
 
 end
 
@@ -166,36 +286,54 @@ if abspath(PROGRAM_FILE) == @__FILE__
     
     model = Slice(starts, ends; axes=axes, steps=steps)
     y = model(x)
-    println("1:",y)
-
+    @assert y == result
     
     #println(x[1:1:1,2:1:4])
 
     starts = [1, 2]
     ends = [0, 1000]
-    result = [ 2 4 7 ]
+    result = [ 2 3 4 ]
     model = Slice(starts, ends)
     y = model(x)
-    println("2:", y)
+    @assert y == result
 
     x = [ 11 12 13 14;
           21 22 23 24;
           31 32 33 34;
           41 42 43 44; ]
 
+    result = [11 13; 31 33]    
     starts = [1, 1]
     ends   = [1000, 1000]
     steps  = [2, 2]
     model = Slice(starts, ends; steps=steps)
     y = model(x)
-    println("3:", y)
+    @assert y == result
 
+    result = [12 14; 32 34]
+    starts = [1, 2]
+    ends   = [1000, 1000]
+    steps  = [2, 2]
+    model = Slice(starts, ends; steps=steps)
+    y = model(x)
+    @assert y == result
+
+
+    result = [21 23; 41 43]
+    starts = [2, 1]
+    ends   = [1000, 1000]
+    steps  = [2, 2]
+    model = Slice(starts, ends; steps=steps)
+    y = model(x)
+    @assert y == result
+
+    result = [22 24; 42 44]
     starts = [2, 2]
     ends   = [1000, 1000]
     steps  = [2, 2]
     model = Slice(starts, ends; steps=steps)
     y = model(x)
-    println("4:", y)
+    @assert y == result
 
 
 
