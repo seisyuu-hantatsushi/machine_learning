@@ -134,7 +134,7 @@ function Slice(starts::AbstractArray{<:Integer},
     steps = steps === nothing ? fill(1, n) : collect(steps)
     length(steps) == n || throw(ArgumentError("`steps` must match `starts`"))
 
-    println("slice construction: ", starts, ",", ends, ",", axes, ",", steps)
+    #println("slice construction: ", starts, ",", ends, ",", axes, ",", steps)
     
     return Slice(starts, ends, axes, steps)
 
